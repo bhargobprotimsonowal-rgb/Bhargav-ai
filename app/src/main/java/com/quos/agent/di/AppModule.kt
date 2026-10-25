@@ -8,6 +8,8 @@ import com.quos.agent.data.local.QuosDatabase
 import com.quos.agent.data.local.TaskDao
 import com.quos.agent.data.parser.CommandParser
 import com.quos.agent.data.parser.DefaultCommandParser
+import com.quos.agent.data.planner.CommandPlanner
+import com.quos.agent.data.planner.LocalDeterministicPlanner
 import com.quos.agent.data.repository.QuosRepository
 import com.quos.agent.data.scheduler.TaskScheduler
 import dagger.Module
@@ -47,6 +49,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideCommandParser(): CommandParser = DefaultCommandParser()
+
+    @Provides
+    @Singleton
+    fun provideCommandPlanner(): CommandPlanner = LocalDeterministicPlanner()
 
     @Provides
     @Singleton

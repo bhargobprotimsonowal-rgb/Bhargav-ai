@@ -3,13 +3,14 @@ package com.quos.agent.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quos.agent.data.action.LocalActionExecutor
-import com.quos.agent.data.email.EmailDraft
 import com.quos.agent.data.email.EmailApprovalController
+import com.quos.agent.data.email.EmailDraft
 import com.quos.agent.data.model.NoteEntity
 import com.quos.agent.data.model.TaskEntity
 import com.quos.agent.data.model.TaskStatus
 import com.quos.agent.data.parser.ActionType
-import com.quos.agent.data.parser.CommandParser
+import com.quos.agent.data.planner.CommandPlanner
+import com.quos.agent.data.planner.PlannerValidator
 import com.quos.agent.data.repository.QuosRepository
 import com.quos.agent.data.scheduler.TaskScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,13 +36,14 @@ data class QuosUiState(
     val emailApprovalRequested: Boolean = false,
     val emailApprovalId: String? = null,
     val requiresPermission: Boolean = false,
-    val permissionMessage: String? = null
+    val permissionMessage: String? = null,
+    val lastPlanSummary: String = "No proposal yet."
 )
 
 @HiltViewModel
 class QuosViewModel @Inject constructor(
     private val repository: QuosRepository,
-    private val parser: CommandParser,
+    private val planner: CommandPlanner,
     private val scheduler: TaskScheduler,
     private val executor: LocalActionExecutor,
     private val emailApprovalController: EmailApprovalController
@@ -68,12 +70,15 @@ class QuosViewModel @Inject constructor(
             return
         }
 
-        val proposal = parser.parse(command)
-        if (!proposal.isValid) {
-            appendLog(proposal.description)
-            _uiState.value = _uiState.value.copy(agentStatus = "Blocked")
+        val proposal = planner.plan(command)
+        val validated = PlannerValidator.validate(proposal)
+        if (validated.isFailure) {
+            appendLog(validated.exceptionOrNull()?.message ?: "The plan was rejected.")
+            _uiState.value = _uiState.value.copy(agentStatus = "Blocked", lastPlanSummary = proposal.description)
             return
         }
+
+        _uiState.value = _uiState.value.copy(lastPlanSummary = proposal.description)
 
         viewModelScope.launch {
             if (proposal.type == ActionType.PREPARE_EMAIL) {
@@ -114,7 +119,13 @@ class QuosViewModel @Inject constructor(
     }
 
     fun queueTask(command: String) {
-        val proposal = parser.parse(command)
+        val proposal = planner.plan(command)
+        val validation = PlannerValidator.validate(proposal)
+        if (validation.isFailure) {
+            appendLog(validation.exceptionOrNull()?.message ?: "Queued request was rejected.")
+            return
+        }
+
         viewModelScope.launch {
             val task = repository.createTask(
                 taskType = com.quos.agent.data.model.TaskType.SCHEDULE_LOCAL_TASK,
