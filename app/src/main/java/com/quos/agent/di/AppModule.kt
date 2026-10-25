@@ -3,6 +3,7 @@ package com.quos.agent.di
 import android.content.Context
 import androidx.room.Room
 import androidx.work.WorkManager
+import com.quos.agent.data.email.EmailApprovalController
 import com.quos.agent.data.local.NoteDao
 import com.quos.agent.data.local.QuosDatabase
 import com.quos.agent.data.local.TaskDao
@@ -53,6 +54,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideCommandPlanner(): CommandPlanner = LocalDeterministicPlanner()
+
+    @Provides
+    @Singleton
+    fun provideEmailApprovalController(): EmailApprovalController = EmailApprovalController()
 
     @Provides
     @Singleton
