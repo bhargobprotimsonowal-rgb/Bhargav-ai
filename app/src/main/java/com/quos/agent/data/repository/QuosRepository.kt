@@ -16,6 +16,8 @@ class QuosRepository @Inject constructor(
 ) {
     fun observeTasks(): Flow<List<TaskEntity>> = taskDao.observeTasks()
     fun observeNotes(): Flow<List<NoteEntity>> = noteDao.observeNotes()
+    fun observePendingTasks(): Flow<List<TaskEntity>> = taskDao.observeTasksByStatus(TaskStatus.PENDING.name)
+    fun observeWaitingForNetworkTasks(): Flow<List<TaskEntity>> = taskDao.observeTasksByStatus(TaskStatus.WAITING_FOR_NETWORK.name)
 
     suspend fun createTask(
         taskType: TaskType,
@@ -25,12 +27,16 @@ class QuosRepository @Inject constructor(
         idempotencyKey: String? = null,
         status: TaskStatus = TaskStatus.PENDING
     ): TaskEntity {
+        val key = idempotencyKey ?: UUID.randomUUID().toString()
+        val existing = taskDao.findByIdempotencyKey(key)
+        if (existing != null) return existing
+
         val task = TaskEntity(
             taskType = taskType.name,
             description = description,
             payloadJson = payloadJson,
             networkRequired = networkRequired,
-            idempotencyKey = idempotencyKey ?: UUID.randomUUID().toString(),
+            idempotencyKey = key,
             status = status.name,
             updatedAt = System.currentTimeMillis()
         )
@@ -45,6 +51,8 @@ class QuosRepository @Inject constructor(
     }
 
     suspend fun findTaskByTaskId(taskId: String): TaskEntity? = taskDao.getTask(taskId)
+
+    suspend fun findDuplicateByIdempotencyKey(key: String): TaskEntity? = taskDao.findByIdempotencyKey(key)
 
     suspend fun updateTaskStatus(
         taskId: String,
@@ -68,5 +76,16 @@ class QuosRepository @Inject constructor(
         taskDao.updateTask(task.copy(status = TaskStatus.CANCELLED.name, updatedAt = System.currentTimeMillis()))
     }
 
-    suspend fun findDuplicateByIdempotencyKey(key: String): TaskEntity? = taskDao.findByIdempotencyKey(key)
+    suspend fun markTaskRetry(taskId: String, errorMessage: String) {
+        val current = taskDao.getTask(taskId) ?: return
+        val nextRetry = current.retryCount + 1
+        taskDao.updateTask(
+            current.copy(
+                status = if (nextRetry >= 3) TaskStatus.FAILED.name else TaskStatus.WAITING_FOR_NETWORK.name,
+                retryCount = nextRetry,
+                lastError = errorMessage,
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+    }
 }
