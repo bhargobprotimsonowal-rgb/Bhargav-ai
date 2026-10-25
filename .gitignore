@@ -1,1 +1,10 @@
-# Include this file in repository root for GitHub-compatible project setup.
+# Project-wide Gradle builds
+.gradle/
+.idea/
+.local.properties
+**/build/
+*.iml
+**/.cxx/
+**/captures/
+**/debug.keystore
+*.jks
