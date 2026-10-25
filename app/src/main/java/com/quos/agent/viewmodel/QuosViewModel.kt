@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.quos.agent.data.action.LocalActionExecutor
 import com.quos.agent.data.email.EmailDraft
+import com.quos.agent.data.email.EmailApprovalController
 import com.quos.agent.data.model.NoteEntity
 import com.quos.agent.data.model.TaskEntity
 import com.quos.agent.data.model.TaskStatus
@@ -30,7 +31,11 @@ data class QuosUiState(
         to = listOf("team@quosagent.example"),
         subject = "Project sync",
         body = "Hi team, here is the latest update from Quos Agent."
-    )
+    ),
+    val emailApprovalRequested: Boolean = false,
+    val emailApprovalId: String? = null,
+    val requiresPermission: Boolean = false,
+    val permissionMessage: String? = null
 )
 
 @HiltViewModel
@@ -38,7 +43,8 @@ class QuosViewModel @Inject constructor(
     private val repository: QuosRepository,
     private val parser: CommandParser,
     private val scheduler: TaskScheduler,
-    private val executor: LocalActionExecutor
+    private val executor: LocalActionExecutor,
+    private val emailApprovalController: EmailApprovalController
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuosUiState())
@@ -70,6 +76,17 @@ class QuosViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            if (proposal.type == ActionType.PREPARE_EMAIL) {
+                val approval = emailApprovalController.createSendApprovalRequest(_uiState.value.emailDraft)
+                _uiState.value = _uiState.value.copy(
+                    agentStatus = "Pending approval",
+                    emailApprovalRequested = true,
+                    emailApprovalId = approval.requestId,
+                    logs = listOf("Email draft is ready for explicit approval.") + _uiState.value.logs.take(8)
+                )
+                return@launch
+            }
+
             val result = executor.execute(proposal)
             appendLog(result.getOrElse { "Command failed: $it" })
 
@@ -109,6 +126,44 @@ class QuosViewModel @Inject constructor(
             scheduler.schedule(task.taskId, true)
             appendLog("Queued task ${task.taskId} on the local scheduler.")
         }
+    }
+
+    fun approveEmailSend() {
+        val approvalId = _uiState.value.emailApprovalId ?: return
+        val draft = _uiState.value.emailDraft
+        val approval = emailApprovalController.createSendApprovalRequest(draft)
+        val result = emailApprovalController.approveSend(approval.copy(approved = true))
+        if (result.isSuccess) {
+            _uiState.value = _uiState.value.copy(
+                agentStatus = "Email approved",
+                emailApprovalRequested = false,
+                emailApprovalId = null,
+                logs = listOf("Email send approved and queued for delivery.") + _uiState.value.logs.take(8)
+            )
+        } else {
+            _uiState.value = _uiState.value.copy(
+                agentStatus = "Blocked",
+                emailApprovalRequested = false,
+                emailApprovalId = null,
+                logs = listOf(result.exceptionOrNull()?.message ?: "Email approval rejected.") + _uiState.value.logs.take(8)
+            )
+        }
+    }
+
+    fun rejectEmailSend() {
+        _uiState.value = _uiState.value.copy(
+            agentStatus = "Email not sent",
+            emailApprovalRequested = false,
+            emailApprovalId = null,
+            logs = listOf("Email send was rejected by the user.") + _uiState.value.logs.take(8)
+        )
+    }
+
+    fun setPermissionState(requiresPermission: Boolean, permissionMessage: String?) {
+        _uiState.value = _uiState.value.copy(
+            requiresPermission = requiresPermission,
+            permissionMessage = permissionMessage
+        )
     }
 
     private fun appendLog(message: String) {
