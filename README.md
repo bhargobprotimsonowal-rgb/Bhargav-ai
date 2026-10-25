@@ -1,49 +1,37 @@
-# Quos Agent
+# Quos Personal AI Agent
 
-Quos Agent is a privacy-focused Android personal automation assistant. It stores local tasks and notes in Room, schedules network-dependent work in WorkManager, and keeps user approvals explicit before risky actions are executed.
+Quos Personal AI Agent is a privacy-first Android personal productivity app that helps users manage tasks, notes, email drafts, and scheduled local actions through a deterministic command flow and safe approval model. The app is designed to keep all sensitive work local by default and only act on user-approved requests.
+
+## What the app does
+- Stores notes and task metadata locally using Room.
+- Lets users issue natural-language commands such as saving a note, viewing tasks, or queueing work.
+- Uses a safe local planner and validation layer before actions are executed.
+- Supports explicit email approval before any send is triggered.
+- Queues network-dependent work for later execution using WorkManager.
+- Keeps user approvals explicit for critical actions and avoids unsafe automation.
+
+## Project status
+This repository contains the Android app skeleton and feature foundation for a local-first personal AI agent. The project is structured for future expansion into remote AI integrations, email automation, and more advanced productivity workflows.
 
 ## Minimum requirements
-- Android Studio Ladybug or newer with Android Gradle Plugin 8.5.2
+- Android Studio Ladybug or newer
 - JDK 17
 - Android SDK 34
-- minimum API level 26
+- Min SDK 26
+- Android Gradle Plugin 8.5.2
 
-## Build and run
-1. Open Android Studio.
-2. Import the project root.
-3. Let Gradle sync.
-4. Create a device or emulator running Android 8.0+.
-5. Run the app configuration `app`.
+## How to build
+1. Open the project in Android Studio.
+2. Let Gradle sync.
+3. Select the app configuration and run on an emulator or connected device.
+4. Run the unit tests with:
+   ./gradlew testDebugUnitTest
 
-## Command examples supported by the offline deterministic parser
-- Save a note about my new app idea.
-- Show pending tasks.
-- Prepare an email to my project team.
-- Queue this task until the internet returns.
-- Cancel task 123.
+## Privacy and safety model
+- Notes and tasks are retained on-device by default.
+- User approval is required before important actions are executed.
+- Network-dependent jobs are stored and retried safely when connectivity is available.
+- No secrets are committed to the repository.
 
-## OAuth / Gmail setup
-This app includes a placeholder provider abstraction and OAuth config scaffolding only. No secrets are committed. To connect a real Gmail account:
-
-1. Create a Google Cloud project.
-2. Enable the Gmail API.
-3. Add OAuth 2.0 client credentials for Android or a web client as appropriate.
-4. Add `CLIENT_ID`, `CLIENT_SECRET`, and redirect URI values in a local secure config file or your secure backend.
-5. Keep tokens in Android Keystore or a secure backend, never as hardcoded strings in the client.
-
-## Privacy and data boundaries
-- Stored locally on the device: notes, tasks, event logs, user-approved drafts, and scheduling metadata.
-- Leave the device only when the user approves a cloud action or provider request (such as Gmail OAuth or a backend API call).
-- No passwords or secrets are stored in source code or logs.
-
-## Known limitations
-- This is an offline-first starter app that implements the core architecture and functional UI.
-- External provider integrations (Gmail OAuth, remote AI planning) require additional configuration outside the app.
-- The app does not send any real email in automated tests.
-
-## Testing
-Run:
-
-./gradlew testDebugUnitTest
-
-or open Android Studio's test runner to run the unit tests and instrumentation tests for the app module.
+## Repository description
+Quos Personal AI Agent is a local-first personal assistant app for Android that focuses on note-taking, task scheduling, safe automation, and explicit email approvals.
