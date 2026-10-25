@@ -8,6 +8,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.quos.agent.data.model.TaskStatus
 import com.quos.agent.data.repository.QuosRepository
 import javax.inject.Inject
 import java.util.concurrent.TimeUnit
@@ -35,5 +36,15 @@ class TaskScheduler @Inject constructor(
             ExistingWorkPolicy.REPLACE,
             request
         )
+    }
+
+    suspend fun reschedulePendingTasks() {
+        val pending = repository.getPendingTasks()
+        pending.forEach { task ->
+            schedule(task.taskId, task.networkRequired)
+            if (task.status == TaskStatus.WAITING_FOR_NETWORK.name) {
+                repository.updateTaskStatus(task.taskId, TaskStatus.PENDING)
+            }
+        }
     }
 }

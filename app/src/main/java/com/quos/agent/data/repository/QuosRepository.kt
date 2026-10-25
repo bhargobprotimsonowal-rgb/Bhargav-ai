@@ -18,6 +18,8 @@ class QuosRepository @Inject constructor(
     fun observeNotes(): Flow<List<NoteEntity>> = noteDao.observeNotes()
     fun observePendingTasks(): Flow<List<TaskEntity>> = taskDao.observeTasksByStatus(TaskStatus.PENDING.name)
     fun observeWaitingForNetworkTasks(): Flow<List<TaskEntity>> = taskDao.observeTasksByStatus(TaskStatus.WAITING_FOR_NETWORK.name)
+    suspend fun getPendingTasks(): List<TaskEntity> = taskDao.getTasksByStatus(TaskStatus.PENDING.name) +
+        taskDao.getTasksByStatus(TaskStatus.WAITING_FOR_NETWORK.name)
 
     suspend fun createTask(
         taskType: TaskType,

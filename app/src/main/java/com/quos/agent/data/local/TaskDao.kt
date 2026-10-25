@@ -19,6 +19,9 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE status = :status ORDER BY createdAt DESC")
     fun observeTasksByStatus(status: String): Flow<List<TaskEntity>>
 
+    @Query("SELECT * FROM tasks WHERE status = :status ORDER BY createdAt DESC")
+    suspend fun getTasksByStatus(status: String): List<TaskEntity>
+
     @Query("SELECT * FROM tasks WHERE taskId = :taskId LIMIT 1")
     suspend fun getTask(taskId: String): TaskEntity?
 
